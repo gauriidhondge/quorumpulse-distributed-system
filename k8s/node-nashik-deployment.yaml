@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-nashik
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: node-nashik}
+  template:
+    metadata:
+      labels: {app: node-nashik}
+    spec:
+      containers:
+        - name: node-nashik
+          image: blood-network:latest
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "node.main:app", "--host", "0.0.0.0", "--port", "8003"]
+          env:
+            - {name: NODE_NAME, value: "nashik"}
+            - {name: PORT, value: "8003"}
+            - {name: REDIS_HOST, value: "redis"}
+            - {name: PUNE_HOST, value: "node-pune"}
+            - {name: MUMBAI_HOST, value: "node-mumbai"}
+            - {name: NASHIK_HOST, value: "node-nashik"}
+          ports:
+            - containerPort: 8003
+          livenessProbe:
+            httpGet: {path: /health, port: 8003}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-nashik
+spec:
+  selector: {app: node-nashik}
+  ports:
+    - port: 8003
+      targetPort: 8003

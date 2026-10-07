@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-mumbai
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: node-mumbai}
+  template:
+    metadata:
+      labels: {app: node-mumbai}
+    spec:
+      containers:
+        - name: node-mumbai
+          image: blood-network:latest
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "node.main:app", "--host", "0.0.0.0", "--port", "8002"]
+          env:
+            - {name: NODE_NAME, value: "mumbai"}
+            - {name: PORT, value: "8002"}
+            - {name: REDIS_HOST, value: "redis"}
+            - {name: PUNE_HOST, value: "node-pune"}
+            - {name: MUMBAI_HOST, value: "node-mumbai"}
+            - {name: NASHIK_HOST, value: "node-nashik"}
+          ports:
+            - containerPort: 8002
+          livenessProbe:
+            httpGet: {path: /health, port: 8002}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-mumbai
+spec:
+  selector: {app: node-mumbai}
+  ports:
+    - port: 8002
+      targetPort: 8002

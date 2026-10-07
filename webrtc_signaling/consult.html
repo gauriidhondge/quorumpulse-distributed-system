@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Hospital-to-Hospital Video Consult</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Calibri, Arial, sans-serif; background: #003049; color: white; padding: 2rem; text-align: center; }
+  h1 { font-size: 1.4rem; }
+  .muted { color: #669BBC; font-size: 0.9rem; }
+  video { width: 42%; margin: 1rem 1%; border-radius: 10px; background: #000; }
+  input, button { padding: 0.6rem; border-radius: 6px; border: none; margin: 0.4rem; font-size: 0.95rem; }
+  button { background: #C1121F; color: white; font-weight: 600; cursor: pointer; }
+  #status { margin-top: 1rem; color: #669BBC; }
+</style>
+</head>
+<body>
+
+<h1>🎥 Hospital-to-Hospital Emergency Video Consult</h1>
+
+<div>
+  <input id="room" placeholder="Room name (e.g. pune-mumbai-consult)" value="demo-room" />
+  <button onclick="join()">Join Consult</button>
+</div>
+<div id="status">Not connected</div>
+
+<div>
+  <video id="localVideo" autoplay playsinline muted></video>
+  <video id="remoteVideo" autoplay playsinline></video>
+</div>
+
+<script>
+let pc, ws, localStream;
+
+const config = {
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+};
+
+async function join() {
+  const room = document.getElementById('room').value.trim() || 'demo-room';
+  document.getElementById('status').textContent = 'Connecting...';
+
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  document.getElementById('localVideo').srcObject = localStream;
+
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/signal/${room}`);
+
+  pc = new RTCPeerConnection(config);
+  localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+  pc.ontrack = (event) => {
+    document.getElementById('remoteVideo').srcObject = event.streams[0];
+  };
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      ws.send(JSON.stringify({ type: 'ice', candidate: event.candidate }));
+    }
+  };
+
+  ws.onopen = async () => {
+    document.getElementById('status').textContent = 'Waiting for peer...';
+  };
+
+  ws.onmessage = async (event) => {
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === 'offer') {
+      await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      ws.send(JSON.stringify({ type: 'answer', sdp: answer }));
+      document.getElementById('status').textContent = 'Connected to peer!';
+    } else if (msg.type === 'answer') {
+      await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      document.getElementById('status').textContent = 'Connected to peer!';
+    } else if (msg.type === 'ice' && msg.candidate) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+      } catch (e) { console.warn('ICE candidate error', e); }
+    } else if (msg.type === 'ready') {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      ws.send(JSON.stringify({ type: 'offer', sdp: offer }));
+    }
+  };
+
+  setTimeout(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ready' }));
+    }
+  }, 500);
+}
+</script>
+
+</body>
+</html>

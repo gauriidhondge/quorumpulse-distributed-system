@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-pune
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: node-pune}
+  template:
+    metadata:
+      labels: {app: node-pune}
+    spec:
+      containers:
+        - name: node-pune
+          image: blood-network:latest
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "node.main:app", "--host", "0.0.0.0", "--port", "8001"]
+          env:
+            - {name: NODE_NAME, value: "pune"}
+            - {name: PORT, value: "8001"}
+            - {name: REDIS_HOST, value: "redis"}
+            - {name: PUNE_HOST, value: "node-pune"}
+            - {name: MUMBAI_HOST, value: "node-mumbai"}
+            - {name: NASHIK_HOST, value: "node-nashik"}
+          ports:
+            - containerPort: 8001
+          livenessProbe:
+            httpGet: {path: /health, port: 8001}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node-pune
+spec:
+  selector: {app: node-pune}
+  ports:
+    - port: 8001
+      targetPort: 8001

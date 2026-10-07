@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>BLOOD AND RESOURCE MATCHING NETWORK</title>
+<style>
+  :root {
+    --crimson: #C1121F;
+    --navy: #003049;
+    --steel: #669BBC;
+    --bg: #F7F8FA;
+    --text: #1B2430;
+    --muted: #6B7280;
+    --gold: #B8860B;
+    --purple: #5B3A8E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Calibri, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 2rem;
+  }
+  h1 { color: var(--navy); margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 1.2rem; }
+
+  .section-label {
+    margin: 2rem 0 0.8rem;
+    color: var(--navy);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--steel);
+    padding-bottom: 0.3rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1000px) {
+    .grid, .grid3 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .card h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    color: var(--navy);
+  }
+  .card h3 {
+    margin: 0 0 0.6rem;
+    font-size: 0.95rem;
+    color: var(--navy);
+  }
+  label { display: block; margin-top: 0.9rem; font-size: 0.85rem; font-weight: 600; color: var(--navy); }
+  select, input {
+    width: 100%;
+    padding: 0.55rem;
+    margin-top: 0.3rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  button {
+    margin-top: 1.3rem;
+    width: 100%;
+    padding: 0.7rem;
+    background: var(--crimson);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  button.secondary { background: var(--navy); }
+  button.purple { background: var(--purple); }
+  button.gold { background: var(--gold); }
+  button.small { margin-top: 0.6rem; padding: 0.5rem; font-size: 0.85rem; }
+  .btn-row { display: flex; gap: 0.6rem; }
+  .btn-row button { margin-top: 0.6rem; }
+
+  #result, .output-box {
+    margin-top: 1.2rem;
+    padding: 0.9rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    display: none;
+    white-space: pre-wrap;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  #result.found, .output-box.ok { background: #E7F6EC; border: 1px solid #34A853; display: block; }
+  #result.notfound, .output-box.fail { background: #FDECEC; border: 1px solid var(--crimson); display: block; }
+  .output-box.info { background: #EEF3FB; border: 1px solid var(--steel); display: block; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 0.6rem; }
+  th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid #EEE; font-size: 0.85rem; }
+  th { color: var(--navy); }
+  .status-online { color: #1a7f37; font-weight: 600; }
+  .status-offline { color: var(--crimson); font-weight: 600; }
+  .pill {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: white;
+  }
+  .pill.online { background: #1a7f37; }
+  .pill.offline { background: var(--crimson); }
+  .pill.coord { background: var(--gold); }
+  .muted-note { color: var(--muted); font-size: 0.78rem; margin-top: 0.8rem; }
+  .note-box {
+    background: #F3F1FA;
+    border: 1px solid var(--purple);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.78rem;
+    color: var(--purple);
+    margin-bottom: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>🩸 Distributed Blood &amp; Critical Resource Matching Network</h1>
+
+<div class="section-label">Unit 1 &amp; 2 — Matching, Observability, Fault Tolerance</div>
+<div class="grid">
+
+  <div class="card">
+    <h2>Submit a Request</h2>
+    <label>Blood Group</label>
+    <select id="bloodGroup">
+      <option>O+</option><option>O-</option>
+      <option>A+</option><option>A-</option>
+      <option>B+</option><option>B-</option>
+      <option>AB+</option><option>AB-</option>
+    </select>
+
+    <label>Units Needed</label>
+    <input type="number" id="units" value="1" min="1" />
+
+    <label>Urgency</label>
+    <select id="urgency">
+      <option value="normal">Normal</option>
+      <option value="emergency">Emergency</option>
+    </select>
+
+    <button onclick="submitRequest()">Search Network</button>
+
+    <div id="result"></div>
+    <p class="muted-note">A match here only LOOKS UP a donor — it does not reserve units. Use the Unit 3/4 "Reservation" card below (with the donor_id shown here) to actually decrement inventory, protected or unprotected.</p>
+  </div>
+
+  <div class="card">
+    <h2>Live Node Status &amp; Inventory <span id="liveDot" style="color:#1a7f37;">●</span></h2>
+    <table id="nodeTable">
+      <thead><tr><th>Node</th><th>Status</th><th>Last Heartbeat</th><th>Lamport</th><th>Vector Clock</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h2 style="margin-top:1.5rem;">Live Inventory by Node</h2>
+    <table id="inventoryTable">
+      <thead><tr><th>Node</th><th>Inventory (Blood Group : Units)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+</div>
+
+<div class="section-label">Unit 3 — Synchronization: Election, Mutual Exclusion, Global Snapshot</div>
+<div class="grid3">
+
+  <div class="card">
+    <h3>Coordinator Election (Bully Algorithm)</h3>
+    <p class="muted-note" style="margin-top:0;">Shared registry's current coordinator and what each node individually believes — they should converge after an election.</p>
+    <button class="secondary" onclick="refreshElection()">Refresh Election Status</button>
+    <button class="gold small" onclick="triggerElection()">Force a Fresh Election</button>
+    <div id="electionOutput" class="output-box"></div>
+  </div>
+
+  <div class="card">
+    <h3>Reservation: Protected vs Unprotected</h3>
+    <div class="note-box">Same operation, two code paths. "Protected" goes through Ricart-Agrawala mutual exclusion (/mutex/reserve). "Unprotected" goes straight through the Unit 4 object proxy/stub (/objects/reserve), bypassing locking entirely — fire both rapidly against the same donor with 1 unit left to see the race condition the Unit 3 syllabus is about.</div>
+    <label>Donor ID (from a search result above)</label>
+    <input type="text" id="reserveDonorId" placeholder="e.g. d-1a2b3c4d" />
+    <label>Units to Reserve</label>
+    <input type="number" id="reserveUnits" value="1" min="1" />
+    <div class="btn-row">
+      <button class="secondary small" onclick="reserve('mutex')">Protected (Mutex)</button>
+      <button class="purple small" onclick="reserve('objects')">Unprotected (Object)</button>
+    </div>
+    <button class="small" style="background:#6B7280;" onclick="refreshMutexStatus()">Mutex Status (all nodes)</button>
+    <div id="reserveOutput" class="output-box"></div>
+  </div>
+
+  <div class="card">
+    <h3>Global Snapshot (Chandy-Lamport-inspired)</h3>
+    <p class="muted-note" style="margin-top:0;">Takes each node's local process-state snapshot (inventory + logical clocks + mutex state) and totals inventory across the whole network at one instant.</p>
+    <button class="secondary" onclick="triggerSnapshot()">Take Global Snapshot</button>
+    <div id="snapshotOutput" class="output-box"></div>
+  </div>
+
+</div>
+
+<div class="section-label">Unit 4 — Emerging Paradigms: Distributed Objects, DFS, Serverless, Ledger &amp; Self-Study</div>
+<div class="grid3">
+
+  <div class="card">
+    <h3>Mini Distributed File System (hand-built)</h3>
+    <p class="muted-note" style="margin-top:0;">Files are chunked, each chunk replicated across nodes. Download tries replicas in order — kill a node and downloads still succeed (fault tolerance).</p>
+    <label>Choose a file</label>
+    <input type="file" id="dfsFile" />
+    <button class="secondary small" onclick="uploadFile()">Upload (chunk + replicate)</button>
+    <button class="small" style="background:#6B7280;" onclick="refreshDfsFiles()">Refresh File List</button>
+    <div id="dfsOutput" class="output-box"></div>
+    <table id="dfsTable" style="margin-top:0.8rem;">
+      <thead><tr><th>Filename</th><th>Chunks</th><th>RF</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Real Apache Hadoop HDFS (Case Study)</h3>
+    <p class="muted-note" style="margin-top:0;">Same idea, talking to an ACTUAL Hadoop cluster running on this machine via the <code>hdfs</code> CLI — not a simulation. Requires Hadoop's NameNode/DataNode daemons to be running (check with <code>jps</code>).</p>
+    <button class="gold small" onclick="checkHdfsStatus()">Check Cluster Status</button>
+    <label>Choose a file</label>
+    <input type="file" id="hdfsFile" />
+    <button class="secondary small" onclick="hdfsUploadFile()">Upload to HDFS</button>
+    <button class="small" style="background:#6B7280;" onclick="refreshHdfsFiles()">Refresh HDFS File List</button>
+    <div id="hdfsOutput" class="output-box"></div>
+    <table id="hdfsTable" style="margin-top:0.8rem;">
+      <thead><tr><th>Filename</th><th>Size (bytes)</th><th>Replication</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Blockchain Ledger (Self-Study)</h3>
+    <p class="muted-note" style="margin-top:0;">Every successful reservation (protected or unprotected) is appended as a hash-chained block — a tamper-evident audit trail of who reserved what.</p>
+    <button class="secondary small" onclick="refreshLedger()">View Chain</button>
+    <button class="gold small" onclick="validateLedger()">Validate Chain Integrity</button>
+    <div id="ledgerOutput" class="output-box"></div>
+  </div>
+
+  <div class="card">
+    <h3>Deadlock Detection (Self-Study — Knapp's Classification)</h3>
+    <p class="muted-note" style="margin-top:0;">Our live system has only one contested critical section, so it can't actually deadlock. This runs an edge-chasing (Chandy-Misra-Haas style) probe simulation over two synthetic wait-for-graph scenarios instead.</p>
+    <button class="secondary" onclick="runDeadlockDemo()">Run Deadlock-Detection Demo</button>
+    <div id="deadlockOutput" class="output-box"></div>
+  </div>
+
+</div>
+
+<script>
+async function submitRequest() {
+  const blood_group = document.getElementById('bloodGroup').value;
+  const units = parseInt(document.getElementById('units').value, 10);
+  const urgency = document.getElementById('urgency').value;
+  const resultDiv = document.getElementById('result');
+  resultDiv.className = '';
+  resultDiv.style.display = 'none';
+
+  try {
+    const res = await fetch('/request_blood', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blood_group, units, urgency }),
+    });
+    const data = await res.json();
+    if (data.found) {
+      resultDiv.className = 'found';
+      resultDiv.textContent =
+        `Match found!\nDonor: ${data.donor_id}\nCity: ${data.city}\n` +
+        `Units available: ${data.units_available}\nServed by node: ${data.served_by}`;
+      const donorField = document.getElementById('reserveDonorId');
+      if (donorField && data.donor_id) donorField.value = data.donor_id;
+    } else {
+      resultDiv.className = 'notfound';
+      resultDiv.textContent = 'No matching donor found across any reachable node.';
+    }
+  } catch (err) {
+    resultDiv.className = 'notfound';
+    resultDiv.textContent = 'Error contacting Request Service: ' + err;
+  }
+  resultDiv.style.display = 'block';
+}
+
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const secs = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  return secs + 's ago';
+}
+
+function fmtClock(clockEntry) {
+  if (!clockEntry || clockEntry.status === 'unreachable') return '—';
+  return 'L=' + clockEntry.lamport_clock;
+}
+function fmtVector(clockEntry) {
+  if (!clockEntry || clockEntry.status === 'unreachable') return '—';
+  const v = clockEntry.vector_clock || {};
+  return Object.entries(v).map(([k, val]) => `${k}:${val}`).join(' ');
+}
+
+let lastDashboardData = null;
+
+function connectStream() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/ws/live_inventory`);
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    lastDashboardData = data;
+
+    const nodeBody = document.querySelector('#nodeTable tbody');
+    nodeBody.innerHTML = '';
+    (data.nodes || []).forEach((n) => {
+      const tr = document.createElement('tr');
+      const pillClass = n.status === 'online' ? 'online' : 'offline';
+      const isCoord = data.coordinator === n.node_name;
+      const nameCell = isCoord
+        ? `${n.node_name} <span class="pill coord">COORDINATOR</span>`
+        : n.node_name;
+      const clockEntry = (data.clocks || {})[n.node_name];
+      tr.innerHTML = `<td>${nameCell}</td>
+        <td><span class="pill ${pillClass}">${n.status}</span></td>
+        <td>${timeAgo(n.last_heartbeat)}</td>
+        <td>${fmtClock(clockEntry)}</td>
+        <td>${fmtVector(clockEntry)}</td>`;
+      nodeBody.appendChild(tr);
+    });
+
+    const invBody = document.querySelector('#inventoryTable tbody');
+    invBody.innerHTML = '';
+    Object.entries(data.inventory || {}).forEach(([node, inv]) => {
+      const invStr = inv.status === 'unreachable'
+        ? 'unreachable'
+        : Object.entries(inv).map(([bg, units]) => `${bg}: ${units}`).join(', ');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${node}</td><td>${invStr}</td>`;
+      invBody.appendChild(tr);
+    });
+  };
+
+  ws.onclose = () => {
+    document.getElementById('liveDot').style.color = '#C1121F';
+    setTimeout(connectStream, 2000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+connectStream();
+
+function showBox(id, obj, ok = true) {
+  const box = document.getElementById(id);
+  box.className = 'output-box ' + (ok ? 'ok' : 'fail');
+  box.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+  box.style.display = 'block';
+}
+
+async function refreshElection() {
+  try {
+    const res = await fetch('/election/status');
+    const data = await res.json();
+    showBox('electionOutput', data, true);
+  } catch (err) {
+    showBox('electionOutput', 'Error: ' + err, false);
+  }
+}
+
+async function triggerElection() {
+  try {
+    const res = await fetch('/election/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    showBox('electionOutput', data, !data.error);
+    setTimeout(refreshElection, 1500);
+  } catch (err) {
+    showBox('electionOutput', 'Error: ' + err, false);
+  }
+}
+
+async function reserve(mode) {
+  const donor_id = document.getElementById('reserveDonorId').value.trim();
+  const units = parseInt(document.getElementById('reserveUnits').value, 10);
+  if (!donor_id) {
+    showBox('reserveOutput', 'Enter a donor_id first (search above to get one).', false);
+    return;
+  }
+  const endpoint = mode === 'mutex' ? '/mutex/reserve' : '/objects/reserve';
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ donor_id, units }),
+    });
+    const data = await res.json();
+    const ok = data.reserved === true || data.success === true;
+    showBox('reserveOutput', { via: endpoint, ...data }, ok);
+  } catch (err) {
+    showBox('reserveOutput', 'Error: ' + err, false);
+  }
+}
+
+async function refreshMutexStatus() {
+  try {
+    const res = await fetch('/mutex/status_all');
+    const data = await res.json();
+    showBox('reserveOutput', data, true);
+  } catch (err) {
+    showBox('reserveOutput', 'Error: ' + err, false);
+  }
+}
+
+async function triggerSnapshot() {
+  try {
+    const res = await fetch('/snapshot/trigger', { method: 'POST' });
+    const data = await res.json();
+    showBox('snapshotOutput', data, true);
+  } catch (err) {
+    showBox('snapshotOutput', 'Error: ' + err, false);
+  }
+}
+
+async function uploadFile() {
+  const input = document.getElementById('dfsFile');
+  if (!input.files.length) {
+    showBox('dfsOutput', 'Choose a file first.', false);
+    return;
+  }
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  try {
+    const res = await fetch('/dfs/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    showBox('dfsOutput', data, true);
+    refreshDfsFiles();
+  } catch (err) {
+    showBox('dfsOutput', 'Error: ' + err, false);
+  }
+}
+
+async function refreshDfsFiles() {
+  try {
+    const res = await fetch('/dfs/files');
+    const files = await res.json();
+    const body = document.querySelector('#dfsTable tbody');
+    body.innerHTML = '';
+    files.forEach((f) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${f.filename}</td><td>${f.total_chunks}</td><td>${f.replication_factor}</td>
+        <td><a href="/dfs/download/${f.file_id}" target="_blank">Download</a></td>`;
+      body.appendChild(tr);
+    });
+  } catch (err) {
+    showBox('dfsOutput', 'Error: ' + err, false);
+  }
+}
+refreshDfsFiles();
+
+async function checkHdfsStatus() {
+  try {
+    const res = await fetch('/hdfs/status');
+    const data = await res.json();
+    showBox('hdfsOutput', data, data.reachable !== false);
+  } catch (err) {
+    showBox('hdfsOutput', 'Error: ' + err, false);
+  }
+}
+
+async function hdfsUploadFile() {
+  const input = document.getElementById('hdfsFile');
+  if (!input.files.length) {
+    showBox('hdfsOutput', 'Choose a file first.', false);
+    return;
+  }
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  try {
+    const res = await fetch('/hdfs/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    showBox('hdfsOutput', data, data.uploaded !== false);
+    refreshHdfsFiles();
+  } catch (err) {
+    showBox('hdfsOutput', 'Error: ' + err, false);
+  }
+}
+
+async function refreshHdfsFiles() {
+  try {
+    const res = await fetch('/hdfs/files');
+    const files = await res.json();
+    if (files.error) {
+      showBox('hdfsOutput', files, false);
+      return;
+    }
+    const body = document.querySelector('#hdfsTable tbody');
+    body.innerHTML = '';
+    files.forEach((f) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${f.name}</td><td>${f.size_bytes}</td><td>${f.replication}</td>
+        <td><a href="/hdfs/download/${f.name}" target="_blank">Download</a></td>`;
+      body.appendChild(tr);
+    });
+  } catch (err) {
+    showBox('hdfsOutput', 'Error: ' + err, false);
+  }
+}
+refreshHdfsFiles();
+
+async function refreshLedger() {
+  try {
+    const res = await fetch('/ledger/chain');
+    const data = await res.json();
+    showBox('ledgerOutput', data, true);
+  } catch (err) {
+    showBox('ledgerOutput', 'Error: ' + err, false);
+  }
+}
+
+async function validateLedger() {
+  try {
+    const res = await fetch('/ledger/validate');
+    const data = await res.json();
+    showBox('ledgerOutput', data, data.valid !== false);
+  } catch (err) {
+    showBox('ledgerOutput', 'Error: ' + err, false);
+  }
+}
+
+async function runDeadlockDemo() {
+  try {
+    const res = await fetch('/deadlock/simulate');
+    const data = await res.json();
+    showBox('deadlockOutput', data, true);
+  } catch (err) {
+    showBox('deadlockOutput', 'Error: ' + err, false);
+  }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,72 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  node-pune:
+    build: .
+    command: uvicorn node.main:app --host 0.0.0.0 --port 8001
+    environment:
+      NODE_NAME: pune
+      PORT: "8001"
+      REDIS_HOST: redis
+      PUNE_HOST: node-pune
+      MUMBAI_HOST: node-mumbai
+      NASHIK_HOST: node-nashik
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+
+  node-mumbai:
+    build: .
+    command: uvicorn node.main:app --host 0.0.0.0 --port 8002
+    environment:
+      NODE_NAME: mumbai
+      PORT: "8002"
+      REDIS_HOST: redis
+      PUNE_HOST: node-pune
+      MUMBAI_HOST: node-mumbai
+      NASHIK_HOST: node-nashik
+    ports:
+      - "8002:8002"
+    depends_on:
+      - redis
+
+  node-nashik:
+    build: .
+    command: uvicorn node.main:app --host 0.0.0.0 --port 8003
+    environment:
+      NODE_NAME: nashik
+      PORT: "8003"
+      REDIS_HOST: redis
+      PUNE_HOST: node-pune
+      MUMBAI_HOST: node-mumbai
+      NASHIK_HOST: node-nashik
+    ports:
+      - "8003:8003"
+    depends_on:
+      - redis
+
+  request-service:
+    build: .
+    command: uvicorn request_service.main:app --host 0.0.0.0 --port 8000
+    environment:
+      REDIS_HOST: redis
+      PUNE_HOST: node-pune
+      MUMBAI_HOST: node-mumbai
+      NASHIK_HOST: node-nashik
+      SERVERLESS_GATEWAY_HOST: serverless-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - node-pune
+      - node-mumbai
+      - node-nashik
+
+  serverless-gateway:
+    build: .
+    command: uvicorn serverless.gateway:app --host 0.0.0.0 --port 8095
+    ports:
+      - "8095:8095"
